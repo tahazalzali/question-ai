@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 export const createHttpClient = (baseURL?: string, timeout = 10000): AxiosInstance => {
   return axios.create({

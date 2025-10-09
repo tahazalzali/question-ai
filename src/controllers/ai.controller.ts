@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { searchAndExtract } from '../services/search';
 import { buildNextQuestion } from '../services/questionsFlow';
 import { Session } from '../models/Session';
-import { Person, IPerson } from '../models/Person';
+import {  IPerson } from '../models/Person';
 import { getCache, setCache } from '../services/cache';
 import { logger } from '../utils/logger';
 
