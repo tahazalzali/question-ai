@@ -1,8 +1,14 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 const isProd = process.env.NODE_ENV === 'production';
-if (!isProd) {
+const envPath = process.env.DOTENV_PATH || path.resolve(process.cwd(), '.env');
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else if (!isProd) {
   dotenv.config();
 }
 
