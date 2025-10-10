@@ -4,10 +4,14 @@ import fs from 'fs';
 import path from 'path';
 
 const isProd = process.env.NODE_ENV === 'production';
-const envPath = process.env.DOTENV_PATH || path.resolve(process.cwd(), '.env');
 
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
+const explicitPath = process.env.DOTENV_PATH;
+const defaultPath = path.resolve(process.cwd(), '.env');
+
+if (explicitPath) {
+  dotenv.config({ path: explicitPath });
+} else if (!isProd && fs.existsSync(defaultPath)) {
+  dotenv.config({ path: defaultPath });
 } else if (!isProd) {
   dotenv.config();
 }
