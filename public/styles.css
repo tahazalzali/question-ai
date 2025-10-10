@@ -165,3 +165,36 @@ body { background: var(--bg); color: var(--fg); font-family: ui-sans-serif, syst
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.sources {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: grid;
+  gap: 6px;
+}
+
+.source-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(90, 162, 255, 0.16);
+  border: 1px solid rgba(90, 162, 255, 0.45);
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.source-provider:hover {
+  background: rgba(90, 162, 255, 0.28);
+}
+
+.source-note {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}

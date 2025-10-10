@@ -14,7 +14,18 @@ function truncate(s: string, n = 240): string {
   return flat.length > n ? `${flat.slice(0, n)}…` : flat;
 }
 
+export type PerplexityResultHandler = (context: string, results: PerplexitySearchResult[]) => void;
+
+let resultHandler: PerplexityResultHandler | null = null;
+
+export function setPerplexityResultHandler(handler: PerplexityResultHandler | null) {
+  resultHandler = handler;
+}
+
 function logPerplexityResults(context: string, results: PerplexitySearchResult[]) {
+  if (resultHandler) {
+    resultHandler(context, results);
+  }
   if (!Array.isArray(results)) return;
   const lines = results.map((r, i) => {
     const title = r.title || '(no title)';

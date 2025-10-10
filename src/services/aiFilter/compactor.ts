@@ -10,7 +10,7 @@ export class ResultCompactor {
       title: this.trim(r.title || '', 160),
       url: r.url || r.link || '',
       snippet: this.trim(r.snippet || '', 500),
-      provider: r.provider,
+      provider: r.provider || 'unknown',
     }));
   }
 }

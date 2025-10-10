@@ -1205,6 +1205,11 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
       age: c.age,
       gender: c.gender,
       relatedPeople: c.relatedPeople,
+      sources: (c.sources || []).map(s => ({
+        provider: s.provider,
+        url: s.url ?? null,
+        note: s.note ?? null,
+      })),
       confidence: c.confidence,
     };
   });

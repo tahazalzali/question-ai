@@ -101,6 +101,57 @@
     return `<ul class="chips">${values.map(v => `<li class="chip">${v}</li>`).join('')}</ul>`;
   }
 
+  function sourceProviderLabel(provider) {
+    return (provider || '').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function renderSources(parent, sources) {
+    const filtered = (sources || [])
+      .filter(src => src?.url && (src.provider || '').toLowerCase() === 'perplexity');
+    if (!filtered.length) return;
+
+    const row = document.createElement('div');
+    row.className = 'kv';
+
+    const label = document.createElement('span');
+    label.className = 'k';
+    label.textContent = 'Sources';
+
+    const value = document.createElement('span');
+    value.className = 'v';
+
+    const list = document.createElement('ul');
+    list.className = 'sources';
+
+    filtered.forEach(src => {
+      const item = document.createElement('li');
+
+      const link = document.createElement('a');
+      link.className = 'source-provider';
+      link.href = src.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent =
+        src.url ? src.url :"Source"
+
+      item.appendChild(link);
+
+      if (src.note) {
+        const note = document.createElement('span');
+        note.className = 'source-note';
+        note.textContent = ` – ${src.note}`;
+        item.appendChild(note);
+      }
+
+      list.appendChild(item);
+    });
+
+    value.appendChild(list);
+    row.appendChild(label);
+    row.appendChild(value);
+    parent.appendChild(row);
+  }
+
   function renderResults(payload) {
     clearResults();
     if (!payload || !Array.isArray(payload.results) || payload.results.length === 0) {
@@ -125,6 +176,7 @@
       const emails = asArray(r.emails);
       const phones = asArray(r.phones);
       const confidence = typeof r.confidence === 'number' ? r.confidence : null;
+      const sources = Array.isArray(r.sources) ? r.sources : [];
 
       const section = document.createElement('div');
       section.innerHTML = `
@@ -173,6 +225,8 @@
         relDiv.appendChild(val);
         section.appendChild(relDiv);
       }
+
+      renderSources(section, sources);
 
       card.appendChild(title);
       card.appendChild(section);
