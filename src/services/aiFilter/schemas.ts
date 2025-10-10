@@ -12,7 +12,6 @@ export const candidateSchema = z.object({
   phones: z.array(z.string()).default([]),
   social: z.object({
     instagram: z.string().nullable().optional(),
-    facebook: z.string().nullable().optional(),
     twitter: z.string().nullable().optional(),
     linkedin: z.string().nullable().optional(),
     tiktok: z.string().nullable().optional(),

@@ -192,6 +192,61 @@ const incrCount = (agg: CountAgg, raw: string) => {
   else agg.set(key, { label: t, count: 1 });
 };
 
+const EDU_CERT_PATTERNS = [
+  /\bcertificate\b/i,
+  /\bcertification\b/i,
+  /\bcertified\b/i,
+  /\blicense\b/i,
+  /\blicence\b/i,
+  /\bcredential\b/i,
+  /\bworkshop\b/i,
+  /\btraining\b/i,
+  /\bbootcamp\b/i,
+  /\bshort course\b/i,
+];
+const EDU_DEGREE_HINT_PATTERNS = [
+  /\buniversity\b/i,
+  /\bcollege\b/i,
+  /\bschool\b/i,
+  /\bacademy\b/i,
+  /\binstitute\b/i,
+  /\binstitut\b/i,
+  /\bpolytechnic\b/i,
+  /\biiit\b/i,
+  /\bbachelor'?s?\b/i,
+  /\bmaster'?s?\b/i,
+  /\bb\.?s\.?\b/i,
+  /\bm\.?s\.?\b/i,
+  /\bbsc\b/i,
+  /\bmsc\b/i,
+  /\bphd\b/i,
+  /\bdoctor\b/i,
+  /\bmba\b/i,
+  /\bjd\b/i,
+  /\bmd\b/i,
+];
+
+const isLikelyCertificationEntry = (entry: string): boolean =>
+  EDU_CERT_PATTERNS.some(re => re.test(entry));
+
+const hasHigherEducationHint = (entry: string): boolean =>
+  EDU_DEGREE_HINT_PATTERNS.some(re => re.test(entry));
+
+const sanitizeEducationEntries = (entries: string[] = []): string[] => {
+  const dedup = new Map<string, string>();
+  for (const raw of entries) {
+    const trimmed = (raw || '').trim();
+    if (!trimmed || isUnknownish(trimmed)) continue;
+    const cleaned = displayLabel(trimmed);
+    if (!hasHigherEducationHint(cleaned)) continue;
+    if (isLikelyCertificationEntry(cleaned)) continue;
+    const key = normalizeKeyCI(cleaned);
+    if (!key || dedup.has(key)) continue;
+    dedup.set(key, cleaned);
+  }
+  return Array.from(dedup.values());
+};
+
 // Build query variants to expand search when "none" is selected
 function buildQueryVariantsForExpansion(session: ISession, answeredQ: 'q1' | 'q2' | 'q3' | 'q4'): string[] {
   const base = (session.query || '').trim();
@@ -572,22 +627,22 @@ export async function buildNextQuestion(
     case 'q1': {
       const q = await buildProfessionQuestion(session, candidates);
       logger.info('Built q1', { sessionId: session.id, optionCount: q.options.length });
-      return q;
+      return ensureSelectableQuestion(sessionId, q);
     }
     case 'q2': {
       const q = await buildLocationQuestion(session, candidates);
       logger.info('Built q2', { sessionId: session.id, optionCount: q.options.length });
-      return q;
+      return ensureSelectableQuestion(sessionId, q);
     }
     case 'q3': {
       const q = await buildEmployerQuestion(session, candidates);
       logger.info('Built q3', { sessionId: session.id, optionCount: q.options.length });
-      return q;
+      return ensureSelectableQuestion(sessionId, q);
     }
     case 'q4': {
       const q = await buildEducationQuestion(session, candidates);
       logger.info('Built q4', { sessionId: session.id, optionCount: q.options.length });
-      return q;
+      return ensureSelectableQuestion(sessionId, q);
     }
     case 'done': {
       const fourNoneSelected = ['profession', 'location', 'employer', 'education']
@@ -862,6 +917,29 @@ async function buildEducationQuestion(
       value: entry.label,
     }));
 
+  if (options.length === 0) {
+    const sanitizedFallback = sanitizeEducationEntries(
+      candidates.flatMap(c => c.education || []),
+    );
+    const rawFallback = Array.from(
+      new Set(
+        candidates
+          .flatMap(c => c.education || [])
+          .map(v => (v || '').trim())
+          .filter(v => v && !isUnknownish(v)),
+      ),
+    );
+    const fallbackValues = sanitizedFallback.length > 0 ? sanitizedFallback : rawFallback;
+
+    options = fallbackValues
+      .map((value, idx) => ({
+        id: `edu_fb_${idx}`,
+        label: displayLabel(value),
+        value,
+      }))
+      .slice(0, getMaxOptionsFor(session, 'q4'));
+  }
+
   options = options.slice(0, getMaxOptionsFor(session, 'q4'));
 
   options.push({
@@ -1104,12 +1182,12 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
         ? session.answers.employer
         : null);
 
-    const educationOut =
-      (c.education && c.education.length > 0)
-        ? c.education
-        : (bestEffortUsed && session.answers.education && session.answers.education !== 'none'
-            ? [session.answers.education]
-            : []);
+    const sanitizedEducation = sanitizeEducationEntries(c.education || []);
+    const fallbackEducation =
+      bestEffortUsed && session.answers.education && session.answers.education !== 'none'
+        ? sanitizeEducationEntries([session.answers.education])
+        : [];
+    const educationOut = sanitizedEducation.length > 0 ? sanitizedEducation : fallbackEducation;
 
     return {
       personId: c._id.toString(),
@@ -1145,4 +1223,23 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
     results,
     cacheUsed,
   };
+}
+
+// NEW: auto-answering for questions with no selectable options
+async function ensureSelectableQuestion(
+  sessionId: string,
+  question: Question,
+): Promise<Question | FinalResults | NoMatch> {
+  const hasSelectable = question.options.some(opt => opt.value !== 'none');
+  if (hasSelectable) return question;
+
+  logger.info('Auto-answering question with "none" due to lack of options', {
+    sessionId,
+    questionId: question.questionId,
+  });
+
+  return buildNextQuestion(sessionId, {
+    questionId: question.questionId,
+    selected: 'none',
+  });
 }

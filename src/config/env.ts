@@ -22,6 +22,9 @@ const envSchema = z.object({
   // Brave
   BRAVE_API_KEY: z.string().optional(),
   BRAVE_BASE_URL: z.string().default('https://api.search.brave.com'),
+  // OpenAI
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
 });
 
 const envVars = envSchema.parse(process.env);
@@ -47,6 +50,11 @@ export const config = {
   brave: {
     apiKey: envVars.BRAVE_API_KEY || '',
     baseUrl: envVars.BRAVE_BASE_URL,
+  },
+  // NEW: OpenAI
+  openai: {
+    apiKey: envVars.OPENAI_API_KEY || '',
+    baseUrl: envVars.OPENAI_BASE_URL,
   },
   env: envVars.NODE_ENV,
   isProduction: envVars.NODE_ENV === 'production',

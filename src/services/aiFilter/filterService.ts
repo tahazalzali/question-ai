@@ -39,7 +39,19 @@ export class FilterService {
           throw e;
         }
 
-        return (parsed.candidates || []).map(c => this.norms.normalizeCandidate(c));
+        const normalized = (parsed.candidates || []).map(c => this.norms.normalizeCandidate(c));
+        const preview = normalized.slice(0, 5).map(c => ({
+          fullName: c.fullName,
+          primaryProfession: c.professions?.[0] || null,
+          topLocation: c.locations?.[0] || null,
+          confidence: c.confidence ?? null,
+        }));
+        logger.info('AI filtering candidates accepted', {
+          total: normalized.length,
+          preview,
+        });
+
+        return normalized;
       } catch (error: any) {
         const data = error?.response?.data;
         const isTimeout =

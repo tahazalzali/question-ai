@@ -2,7 +2,7 @@ import { createHttpClient, withTimeout } from '../../utils/http';
 import { config } from '../../config/env';
 
 export class PerplexityClient {
-  private client = createHttpClient(config.perplexity.baseUrl, 65000);
+  private client = createHttpClient(config.openai?.baseUrl ?? 'https://api.openai.com/v1', 65000);
 
   readonly systemPrompt = `You are a strict information extractor. Use only provided snippets/URLs. Do not invent data.
 Rules:
@@ -51,16 +51,16 @@ INPUT: ${JSON.stringify(compact)}`;
       this.client.post(
         '/chat/completions',
         {
-          model: 'sonar-pro',
           messages: [
             { role: 'system', content: this.systemPrompt },
             { role: 'user', content: this.buildUserPrompt(compact) },
           ],
-          temperature: 0,
+          model: 'gpt-4.1',
+          temperature: 0.1,
         },
         {
           headers: {
-            Authorization: `Bearer ${config.perplexity.apiKey}`,
+            Authorization: `Bearer ${config.openai?.apiKey}`,
           },
         },
       ),

@@ -33,7 +33,7 @@ export async function braveWebSearch(
       client.get('/res/v1/web/search', {
         params: {
           q: query,
-          count: Math.min(Math.max(opts.maxResults ?? 5, 1), 5),
+          count: opts.maxResults ?? 5,
         },
         headers: {
           'X-Subscription-Token': config.brave.apiKey,
