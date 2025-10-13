@@ -10,11 +10,33 @@ export interface BraveSearchResult {
 
 function mapWebResults(items: any[]): BraveSearchResult[] {
   if (!Array.isArray(items)) return [];
-  return items.map((r: any) => ({
-    title: r?.title || '',
-    url: r?.url || '',
-    snippet: r?.description || '',
-  }));
+  return items
+    .filter((r: any) => {
+      const url = (r?.url || '').toLowerCase();
+      return !url.includes('linkedin.com/pub/dir/');
+    })
+    .map((r: any) => ({
+      title: r?.title || '',
+      url: r?.url || '',
+      snippet: r?.description || '',
+    }));
+}
+
+let resultHandler: ((context: string, results: BraveSearchResult[]) => void) | null = null;
+
+export function setBraveResultHandler(handler: typeof resultHandler) {
+  resultHandler = handler;
+}
+
+function logBraveResults(context: string, results: BraveSearchResult[]) {
+  if (resultHandler) resultHandler(context, results);
+  if (!Array.isArray(results)) return;
+  results.forEach((r, i) => {
+    const title = r.title || '(no title)';
+    const url = r.url || '(no url)';
+    const snippet = r.snippet || '';
+    console.log(`Brave ${context} result ${i + 1}: ${title} | ${url} | ${snippet}`);
+  });
 }
 
 export async function braveWebSearch(
@@ -46,6 +68,7 @@ export async function braveWebSearch(
     const webResults = resp.data?.web?.results || [];
     const results = mapWebResults(webResults);
 
+    logBraveResults('web', results);
     logger.info(`Brave web results (${results.length}) for query`, { query });
     return results;
   } catch (err: any) {
