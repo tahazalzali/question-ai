@@ -28,6 +28,47 @@ function logPerplexityResults(context: string, results: PerplexitySearchResult[]
   );
 }
 
+const BULK_DUMP_URL_PATTERNS = [
+  /\.csv$/i,
+  /\.tsv$/i,
+  /\.xls$/i,
+  /\.xlsx$/i,
+  /\.pdf$/i,
+  /\.docx?$/i,
+];
+
+function countUrls(text: string): number {
+  return (text.match(/https?:\/\//gi) || []).length;
+}
+
+function isLowSignalResult(result: PerplexitySearchResult): boolean {
+  const url = (result.url || '').toLowerCase();
+  if (BULK_DUMP_URL_PATTERNS.some(re => re.test(url))) return true;
+
+  const snippet = (result.snippet || '').toLowerCase();
+  const urlMentions = countUrls(snippet);
+  if (urlMentions >= 3) return true;
+
+  if (snippet.includes('profileurl') && urlMentions >= 2) return true;
+
+  if (snippet.length > 1200 && urlMentions >= 2) return true;
+
+  if (snippet.includes('linkedin.com/in') && urlMentions >= 3) return true;
+
+  return false;
+}
+
+function sanitizePerplexityResults(results: PerplexitySearchResult[]): PerplexitySearchResult[] {
+  const filtered = results.filter(r => !isLowSignalResult(r));
+  if (filtered.length !== results.length) {
+    logger.info('Filtered low-signal Perplexity results', {
+      dropped: results.length - filtered.length,
+      kept: filtered.length,
+    });
+  }
+  return filtered;
+}
+
 export async function perplexityWebSearch(
   query: string,
   opts: { maxResults?: number } = {},
@@ -62,16 +103,25 @@ export async function perplexityWebSearch(
       return [];
     }
 
-    const results: PerplexitySearchResult[] = response.data.results.map((item: any) => ({
+    const mapped: PerplexitySearchResult[] = response.data.results.map((item: any) => ({
       title: item.title || '',
       url: item.url || '',
       snippet: item.snippet || '',
     }));
 
-    logPerplexityResults('web', results);
+    const results = sanitizePerplexityResults(mapped);
+
+    logger.info('Perplexity search successful', {
+      query,
+      resultCount: results.length,
+      rawCount: mapped.length,
+      attempt: 1,
+    });
+
     return results;
   } catch (error) {
     logger.error('Perplexity web search failed', error);
     return [];
   }
 }
+
