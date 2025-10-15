@@ -1,34 +1,62 @@
 import { z } from 'zod';
 
+const stringArray = z
+  .array(z.union([z.string(), z.null(), z.undefined()]))
+  .default([])
+  .transform(arr =>
+    arr
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+  );
+
 export const candidateSchema = z.object({
   fullName: z.string(),
   firstName: z.string().nullable().optional(),
   middleName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
-  professions: z.array(z.string()).default([]),
-  employers: z.array(z.string()).default([]),
-  education: z.array(z.string()).default([]),
-  emails: z.array(z.string()).default([]),
-  phones: z.array(z.string()).default([]),
-  social: z.object({
-    instagram: z.string().nullable().optional(),
-    twitter: z.string().nullable().optional(),
-    linkedin: z.string().nullable().optional(),
-    tiktok: z.string().nullable().optional(),
-  }).default({}),
+  professions: stringArray,
+  employers: stringArray,
+  education: stringArray,
+  emails: stringArray,
+  phones: stringArray,
+  social: z
+    .object({
+      instagram: z.string().nullable().optional(),
+      facebook: z.string().nullable().optional(),
+      twitter: z.string().nullable().optional(),
+      linkedin: z.string().nullable().optional(),
+      tiktok: z.string().nullable().optional(),
+    })
+    .default({}),
   age: z.number().nullable().optional(),
   gender: z.enum(['male', 'female', 'other']).nullable().optional(),
-  locations: z.array(z.string()).default([]),
-  relatedPeople: z.array(z.object({
-    fullName: z.string(),
-    relation: z.string().nullable().optional(),
-    linkedin: z.string().nullable().optional(),
-  })).default([]),
-  sources: z.array(z.object({
-    provider: z.enum(['perplexity', 'gemini', 'brave']),
-    url: z.string().optional(),
-    note: z.string().optional(),
-  })).default([]),
+  locations: stringArray,
+  relatedPeople: z
+    .array(
+      z.object({
+        fullName: z.string(),
+        relation: z.string().nullable().optional(),
+        linkedin: z.string().nullable().optional(),
+      }),
+    )
+    .default([]),
+  sources: z
+    .array(
+      z.object({
+        provider: z.enum(['perplexity', 'gemini', 'brave']),
+        url: z.string().optional().nullable(),
+        note: z.string().optional().nullable(),
+      }),
+    )
+    .default([])
+    .transform(arr =>
+      arr
+        .filter(src => !!src?.provider)
+        .map(src => ({
+          provider: src.provider,
+          url: src.url ?? undefined,
+          note: src.note ?? undefined,
+        })),
+    ),
   confidence: z.number().min(0).max(1).default(0.5),
 });
 

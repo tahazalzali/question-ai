@@ -28,45 +28,62 @@ function logPerplexityResults(context: string, results: PerplexitySearchResult[]
   );
 }
 
-const BULK_DUMP_URL_PATTERNS = [
-  /\.csv$/i,
-  /\.tsv$/i,
-  /\.xls$/i,
-  /\.xlsx$/i,
-  /\.pdf$/i,
-  /\.docx?$/i,
-];
+function mergeResults(
+  primary: PerplexitySearchResult[],
+  fallback: PerplexitySearchResult[],
+): PerplexitySearchResult[] {
+  const out: PerplexitySearchResult[] = [];
+  const seen = new Set<string>();
 
-function countUrls(text: string): number {
-  return (text.match(/https?:\/\//gi) || []).length;
+  const add = (item: PerplexitySearchResult) => {
+    const urlKey = (item.url || '').trim().toLowerCase();
+    const titleKey = (item.title || '').trim().toLowerCase();
+    const key = urlKey || titleKey;
+    if (key && seen.has(key)) return;
+    if (key) seen.add(key);
+    out.push(item);
+  };
+
+  primary.forEach(add);
+  fallback.forEach(add);
+  return out;
 }
 
-function isLowSignalResult(result: PerplexitySearchResult): boolean {
-  const url = (result.url || '').toLowerCase();
-  if (BULK_DUMP_URL_PATTERNS.some(re => re.test(url))) return true;
+const mapPerplexityResult = (item: any): PerplexitySearchResult => ({
+  title: item?.title || '',
+  url: item?.url || '',
+  snippet: item?.snippet || '',
+});
 
-  const snippet = (result.snippet || '').toLowerCase();
-  const urlMentions = countUrls(snippet);
-  if (urlMentions >= 3) return true;
 
-  if (snippet.includes('profileurl') && urlMentions >= 2) return true;
-
-  if (snippet.length > 1200 && urlMentions >= 2) return true;
-
-  if (snippet.includes('linkedin.com/in') && urlMentions >= 3) return true;
-
-  return false;
+function hasLinkedInHit(results: PerplexitySearchResult[]): boolean {
+  return results.some(r => (r.url || '').toLowerCase().includes('linkedin.com/in/'));
 }
 
-function sanitizePerplexityResults(results: PerplexitySearchResult[]): PerplexitySearchResult[] {
-  const filtered = results.filter(r => !isLowSignalResult(r));
-  if (filtered.length !== results.length) {
-    logger.info('Filtered low-signal Perplexity results', {
-      dropped: results.length - filtered.length,
-      kept: filtered.length,
-    });
-  }
-  return filtered;
+async function requestPerplexitySearch(
+  client: ReturnType<typeof createHttpClient>,
+  query: string,
+  maxResults: number,
+): Promise<PerplexitySearchResult[]> {
+  const response = await withTimeout(
+    client.post(
+      '/search',
+      {
+        query,
+        max_results: maxResults,
+        max_tokens_per_page: 1024,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${config.perplexity.apiKey}`,
+        },
+      },
+    ),
+    10000,
+  );
+
+  const raw = Array.isArray(response.data?.results) ? response.data.results : [];
+  return raw.map(mapPerplexityResult);
 }
 
 export async function perplexityWebSearch(
@@ -79,49 +96,47 @@ export async function perplexityWebSearch(
   }
 
   const client = createHttpClient(config.perplexity.baseUrl);
+  const maxResults = opts.maxResults || 5;
 
   try {
-    const response = await withTimeout(
-      client.post(
-        '/search',
-        {
-          query,
-          max_results: opts.maxResults || 5,
-          max_tokens_per_page: 1024,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${config.perplexity.apiKey}`,
-          },
-        },
-      ),
-      10000,    
-    );
+    const primaryResults = await requestPerplexitySearch(client, query, maxResults);
 
-    if (!response.data.results) {
+    if (!primaryResults.length) {
       logPerplexityResults('web', []);
       return [];
     }
 
-    const mapped: PerplexitySearchResult[] = response.data.results.map((item: any) => ({
-      title: item.title || '',
-      url: item.url || '',
-      snippet: item.snippet || '',
-    }));
+    let finalResults = primaryResults;
 
-    const results = sanitizePerplexityResults(mapped);
+    if (!hasLinkedInHit(primaryResults)) {
+      logger.info('Perplexity fallback triggered (no LinkedIn hits)', { query });
 
-    logger.info('Perplexity search successful', {
-      query,
-      resultCount: results.length,
-      rawCount: mapped.length,
-      attempt: 1,
-    });
+      try {
+        const fallbackQuery = `${query} site:linkedin.com/in`;
+        const fallbackResults = await requestPerplexitySearch(client, fallbackQuery, maxResults);
 
-    return results;
+        if (fallbackResults.length > 0) {
+          logPerplexityResults('fallback', fallbackResults);
+          finalResults = mergeResults(primaryResults, fallbackResults);
+          logger.info('Perplexity fallback merged results', {
+            query,
+            primaryCount: primaryResults.length,
+            fallbackCount: fallbackResults.length,
+            mergedCount: finalResults.length,
+          });
+        }
+      } catch (fallbackError: any) {
+        logger.warn('Perplexity fallback request failed', {
+          query,
+          message: fallbackError?.message,
+        });
+      }
+    }
+
+    logPerplexityResults('web', finalResults);
+    return finalResults;
   } catch (error) {
     logger.error('Perplexity web search failed', error);
     return [];
   }
 }
-

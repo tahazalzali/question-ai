@@ -13,8 +13,7 @@ Rules:
 - Prefer direct, canonical URLs (e.g., https://www.linkedin.com/in/...); avoid redirector/tracking URLs.
 - When a snippet mentions a person tied to an organization-focused result (founder, owner, director, "also known as", etc.), extract that individual even if the title is about the venue/company. Use snippet context to determine the person's canonical name and relation.
 - Capture alias or nickname variants mentioned in snippets and map them to the same candidate when evidence shows they refer to the same person.
-- **CRITICAL: For each candidate, include ALL relevant URLs from the search results where that person (or their alias) is mentioned. Always populate the sources array with the provider and url fields.**
-- If a result mentions the person by alias (e.g., "Abou George" for "Arairo"), include that result's URL in sources with a note explaining the connection.
+- **CRITICAL: For each candidate, include ALL relevant URLs from the search results where that person (or their alias) is mentioned. Always populate the sources array with the provider and url fields. When merging duplicates, union every supporting URL and keep notes explaining the connection when helpful.**
 - If unknown, output null or omit.
 - Never fabricate information.
 Output only raw JSON as a single object. No markdown, no code fences, no additional text.`;
@@ -23,7 +22,7 @@ Output only raw JSON as a single object. No markdown, no code fences, no additio
     return `From these search results, extract real people and return STRICT JSON per the schema.
 Provide candidates even when a result primarily describes an organization but the snippet supplies a person clearly linked to the query (e.g., "Arairo's Pottery … also known as Abou George"). Use snippet context to resolve aliases and confirm relevance.
 
-**IMPORTANT: When extracting a person mentioned via alias, business name, or indirect reference, include the corresponding search result URL in their sources array with a descriptive note.**
+**IMPORTANT: When multiple snippets/URLs refer to the same person, produce a single candidate that aggregates all evidence. Include every distinct supporting URL in the sources array (with provider + url, and a note when clarification is helpful).**
 
 Schema:
 {

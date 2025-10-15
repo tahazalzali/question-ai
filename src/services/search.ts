@@ -60,7 +60,7 @@ export async function searchAndExtract(query: string): Promise<IPerson[]> {
     logger.info('searchAndExtract start', { query });
 
     const [perplexityResults, braveResults] = await Promise.all([
-      perplexityWebSearch(query, { maxResults: 7 }),
+      perplexityWebSearch(query, { maxResults: 5 }),
       braveWebSearch(query, { maxResults: 7 }),
     ]);
 
