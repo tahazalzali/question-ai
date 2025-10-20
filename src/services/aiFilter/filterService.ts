@@ -38,8 +38,9 @@ export class FilterService {
     current: Candidate['sources'] = [],
     incoming: Candidate['sources'] = [],
   ): Candidate['sources'] {
-    const merged = new Map<string, { provider: 'perplexity' | 'gemini' | 'brave'; url?: string; note?: string }>();
-    const add = (source?: { provider: 'perplexity' | 'gemini' | 'brave'; url?: string; note?: string }) => {
+    type Source = NonNullable<Candidate['sources']>[number];
+    const merged = new Map<string, Source>();
+    const add = (source?: Source) => {
       if (!source?.provider) return;
       const urlKey = (source.url || '').trim().toLowerCase();
       const key = `${source.provider}:${urlKey}`;
@@ -48,7 +49,7 @@ export class FilterService {
         if (!existing.note && source.note) existing.note = source.note;
         return;
       }
-      merged.set(key, { provider: source.provider, url: source.url, note: source.note });
+      merged.set(key, { provider: source.provider, url: source.url ?? undefined, note: source.note ?? undefined });
     };
     current.forEach(add);
     incoming.forEach(add);
