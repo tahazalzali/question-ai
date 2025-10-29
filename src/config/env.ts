@@ -61,7 +61,6 @@ export const config = {
     apiKey: envVars.BRAVE_API_KEY || '',
     baseUrl: envVars.BRAVE_BASE_URL,
   },
-  // NEW: OpenAI
   openai: {
     apiKey: envVars.OPENAI_API_KEY || '',
     baseUrl: envVars.OPENAI_BASE_URL,

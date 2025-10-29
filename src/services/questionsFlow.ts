@@ -29,7 +29,7 @@ interface FinalResults {
   cacheUsed: boolean;
 }
 
-// New: terminal response when all four answers are "none"
+// terminal response when all four answers are "none"
 interface NoMatch {
   questionId: 'no_match';
 }
@@ -146,7 +146,6 @@ const includesLocation = (arr: string[] = [], v?: string | null) => {
   return arr.some(x => isLocationMatch(x, v));
 };
 
-// NEW: option label sanitation and “unknown” filtering (display-only)
 const normalizeKeyCI = (s: string) => (s || '').trim().toLowerCase();
 
 const isUnknownish = (s: string): boolean => {
@@ -1005,7 +1004,6 @@ function applyAllFilters(session: ISession, candidates: IPerson[]): IPerson[] {
   return filtered;
 }
 
-// NEW: weighted scoring for best-effort fallback
 function weightedScoreCandidate(session: ISession, c: IPerson) {
   let score = 0;
   let strictMatches = 0;
@@ -1114,7 +1112,6 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
     expandedUsed = ensured.expanded;
   }
 
-  // NEW: best-effort fallback refined — pick only the single best candidate by weighted score.
   let bestEffortUsed = false;
   if (finalCandidates.length === 0) {
     const nonNoneSelected = ['profession', 'location', 'employer', 'education']
@@ -1162,7 +1159,6 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
 
   const cacheUsed = expandedUsed ? false : !!(cached.hit && noNoneSelected);
 
-  // NEW: when in best-effort fallback, fill missing display fields from selected answers (display-only).
   const results = finalCandidates.map(c => {
     const professionOut =
       (c.professions && c.professions[0]) ||
@@ -1230,7 +1226,6 @@ async function buildFinalResults(session: ISession, candidates: IPerson[]): Prom
   };
 }
 
-// NEW: auto-answering for questions with no selectable options
 async function ensureSelectableQuestion(
   sessionId: string,
   question: Question,
